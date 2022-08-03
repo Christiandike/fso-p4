@@ -9,7 +9,7 @@ const middleware = require('./utils/middleware');
 const blogRouter = require('./controllers/blogController');
 
 mongoose
-  .connect(config.MONGO_LOCALHOST)
+  .connect(config.MONGO)
   .then(() => {
     logger.info('connected to MongoDB');
   })
