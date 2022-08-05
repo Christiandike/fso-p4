@@ -1,14 +1,19 @@
 const blogRouter = require('express').Router();
 const Blog = require('../models/blog');
-
-// next is for error handling
+const User = require('../models/user');
 
 // @desc get all blog posts
 // method: GET
 // route: /api/blogs/
 blogRouter.get('/', async (req, res, next) => {
   try {
-    const blogs = await Blog.find({});
+    //the populate method allows document references
+    //to be populated with the actual document fields
+    const blogs = await Blog.find({}).populate('user', {
+      username: 1,
+      name: 1,
+    });
+
     res.json(blogs);
   } catch (err) {
     next(err);
@@ -20,18 +25,31 @@ blogRouter.get('/', async (req, res, next) => {
 // route: /api/blogs/
 blogRouter.post('/', async (req, res, next) => {
   try {
+    let body = req.body;
+    const user = await User.findById(body.userId);
+
     if (!req.body.title || !req.body.url) {
       return res.status(400).json({ error: 'must include title and url' });
     }
 
     if (!req.body.likes) {
-      req.body = { ...req.body, likes: 0 };
-      const blog = await new Blog(req.body).save();
-      return res.status(201).json(blog);
+      body = { ...body, likes: 0 };
+
+      //the id of user is stored with the created blog
+      const savedBlog = await new Blog({ ...body, user: user._id }).save();
+
+      //the id of the created blog is stored with the user
+      user.blogs = user.blogs.concat(savedBlog._id);
+      //and saved
+      await user.save();
+
+      return res.status(201).json(savedBlog);
     }
 
-    const blog = await new Blog(req.body).save();
-    return res.status(201).json(blog);
+    const savedBlog = await new Blog({ ...body, user: user._id }).save();
+    user.blogs = user.blogs.concat(savedBlog._id);
+    await user.save();
+    res.status(201).json(savedBlog);
   } catch (err) {
     next(err);
   }
@@ -61,7 +79,7 @@ blogRouter.put('/:id', async (req, res, next) => {
     const updatedBlog = await Blog.findByIdAndUpdate(
       req.params.id,
       updatedItem,
-      { new: true },
+      { new: true }
     );
     // the {new: true} is an optional parameter that
     // causes the event handler to be called with the new
@@ -73,3 +91,4 @@ blogRouter.put('/:id', async (req, res, next) => {
 });
 
 module.exports = blogRouter;
+

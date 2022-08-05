@@ -14,3 +14,4 @@ describe('total likes', () => {
     expect(listHelper.totalLikes(blog)).toBe(36);
   });
 });
+
