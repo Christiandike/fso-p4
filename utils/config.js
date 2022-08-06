@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const {
-  PORT, MONGO_DEV, MONGO_PROD, MONGO_TEST, NODE_ENV,
+  PORT, MONGO_DEV, MONGO_PROD, MONGO_TEST, NODE_ENV, TOKEN_SECRET
 } = process.env;
 
 const MONGO = NODE_ENV === 'test'
@@ -13,4 +13,5 @@ const MONGO = NODE_ENV === 'test'
 module.exports = {
   MONGO,
   PORT,
+  TOKEN_SECRET
 };

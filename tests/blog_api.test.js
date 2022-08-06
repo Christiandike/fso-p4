@@ -5,6 +5,9 @@ const app = require('../app');
 const api = supertest(app);
 const Blog = require('../models/blog');
 const bloglist = require('../models/bloglist');
+const User = require('../models/user');
+const userlist = require('../models/userlist');
+const helper = require('./tests_helper');
 
 beforeEach(async () => {
   await Blog.deleteMany({});
@@ -12,6 +15,13 @@ beforeEach(async () => {
   for (const blog of bloglist) {
     const blogObj = new Blog(blog);
     await blogObj.save();
+  }
+
+  await User.deleteMany({});
+
+  for (const user of userlist) {
+    const userObj = new User(user);
+    await userObj.save();
   }
 });
 
@@ -40,11 +50,15 @@ describe('when fetching blogs', () => {
 //@desc: tests relating to POST requests
 describe('when creating a new blog', () => {
   test('a valid blog is created', async () => {
+    const users = await api.get('/api/users');
+    const getUserId = users.body.map((u) => u.id);
+
     const newBlog = {
       title: 'title A',
       author: 'author A',
       url: 'url A',
       likes: 0,
+      userId: getUserId[0],
     };
 
     await api
@@ -62,10 +76,14 @@ describe('when creating a new blog', () => {
   });
 
   test('the "likes" property defaults to zero if missing in request', async () => {
+    const users = await api.get('/api/users');
+    const getUserId = users.body.map((u) => u.id);
+
     const newBlog = {
       title: 'title A',
       author: 'author A',
       url: 'url A',
+      userId: getUserId[0],
     };
 
     await api

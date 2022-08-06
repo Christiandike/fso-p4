@@ -1,3 +1,4 @@
+const { request } = require('express');
 const logger = require('./logger');
 
 const reqLogger = (req, res, next) => {
@@ -7,12 +8,26 @@ const reqLogger = (req, res, next) => {
   next();
 };
 
+const tokenExtractor = (req, res, next) => {
+  if (
+    req.get('authorization') &&
+    req.get('authorization').toLowerCase().startsWith('bearer ')
+  ) {
+    req.token = req.get('authorization').substring(7);
+  }
+  next();
+};
+
 const errorHandler = (err, req, res, next) => {
   logger.error(err.name);
 
   // castError
   if (err.name === 'CastError') {
     return res.status(400).json({ error: 'invalid id' });
+  }
+
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({ error: 'invalid token' });
   }
 
   next(err);
@@ -26,4 +41,6 @@ module.exports = {
   reqLogger,
   errorHandler,
   unknownEndpoint,
+  tokenExtractor,
 };
+

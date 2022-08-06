@@ -1,6 +1,8 @@
 const blogRouter = require('express').Router();
 const Blog = require('../models/blog');
 const User = require('../models/user');
+const jwt = require('jsonwebtoken');
+const config = require('../utils/config');
 
 // @desc get all blog posts
 // method: GET
@@ -26,7 +28,18 @@ blogRouter.get('/', async (req, res, next) => {
 blogRouter.post('/', async (req, res, next) => {
   try {
     let body = req.body;
-    const user = await User.findById(body.userId);
+
+    //if token is verified it returns the object on which it was based
+    //object should include: username, and id
+    const decodedToken = jwt.verify(req.token, config.TOKEN_SECRET);
+
+    //if token is invalid, dont even proceed
+    if (!decodedToken.id) {
+      return res.status(401).json({ error: 'token missing or invalid' });
+    }
+
+    //if valid, the id is taken and used to retrieve the users details and assign the user as creator of the blog. see lines 52, 55
+    const user = await User.findById(decodedToken.id);
 
     if (!req.body.title || !req.body.url) {
       return res.status(400).json({ error: 'must include title and url' });
