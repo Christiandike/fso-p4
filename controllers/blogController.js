@@ -73,7 +73,24 @@ blogRouter.post('/', async (req, res, next) => {
 // route: /api/blogs/:id
 blogRouter.delete('/:id', async (req, res, next) => {
   try {
-    await Blog.findByIdAndRemove(req.params.id);
+    const blogToDelete = req.params.id;
+    const decodedToken = jwt.verify(req.token, config.TOKEN_SECRET);
+
+    if (!decodedToken.id) {
+      return res.status(401).json({ error: 'token missing or invalid' });
+    }
+
+    const user = await User.findById(decodedToken.id);
+
+    const ownsBlog = user.blogs.some((b) => b._id.toString() === blogToDelete);
+
+    if (ownsBlog === false) {
+      return res
+        .status(401)
+        .json({ error: 'user can only delete owned blogs' });
+    }
+
+    await Blog.findByIdAndRemove(blogToDelete);
     res.status(204).end();
   } catch (err) {
     next(err);
