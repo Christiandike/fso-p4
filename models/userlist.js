@@ -14,6 +14,11 @@ const userlist = [
     name: 'user C',
     password: 'userC',
   },
+  {
+    username: 'tester',
+    name: 'tester',
+    password: 'tester'
+  }
 ];
 
 module.exports = userlist;

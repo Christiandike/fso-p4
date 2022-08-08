@@ -7,7 +7,6 @@ const Blog = require('../models/blog');
 const bloglist = require('../models/bloglist');
 const User = require('../models/user');
 const userlist = require('../models/userlist');
-const helper = require('./tests_helper');
 
 beforeEach(async () => {
   await Blog.deleteMany({});
@@ -50,15 +49,11 @@ describe('when fetching blogs', () => {
 //@desc: tests relating to POST requests
 describe('when creating a new blog', () => {
   test('a valid blog is created', async () => {
-    const users = await api.get('/api/users');
-    const getUserId = users.body.map((u) => u.id);
-
     const newBlog = {
       title: 'title A',
       author: 'author A',
       url: 'url A',
       likes: 0,
-      userId: getUserId[0],
     };
 
     await api
@@ -73,17 +68,13 @@ describe('when creating a new blog', () => {
     const contents = response.body.map((b) => b.title);
     // toContain matcher checks if an array contains specified value
     expect(contents).toContain('title A');
-  });
+  }, 100000);
 
   test('the "likes" property defaults to zero if missing in request', async () => {
-    const users = await api.get('/api/users');
-    const getUserId = users.body.map((u) => u.id);
-
     const newBlog = {
       title: 'title A',
       author: 'author A',
       url: 'url A',
-      userId: getUserId[0],
     };
 
     await api
@@ -136,7 +127,6 @@ describe('when updating a blog', () => {
 describe('when deleting a blog', () => {
   test('blog is successfully deleted', async () => {
     const blogs = await api.get('/api/blogs');
-    const idToDelete = blogs.body[0].id;
 
     await api.delete(`/api/blogs/${idToDelete}`).expect(204);
 
