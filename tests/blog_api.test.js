@@ -6,26 +6,19 @@ const api = supertest(app);
 const Blog = require('../models/blog');
 const bloglist = require('../models/bloglist');
 const User = require('../models/user');
-const userlist = require('../models/userlist');
-
-beforeEach(async () => {
-  await Blog.deleteMany({});
-
-  for (const blog of bloglist) {
-    const blogObj = new Blog(blog);
-    await blogObj.save();
-  }
-
-  await User.deleteMany({});
-
-  for (const user of userlist) {
-    const userObj = new User(user);
-    await userObj.save();
-  }
-});
+const bcrypt = require('bcryptjs');
 
 //@desc: tests relating to GET requests
 describe('when fetching blogs', () => {
+  beforeEach(async () => {
+    await Blog.deleteMany({});
+
+    for (const blog of bloglist) {
+      const blogObj = new Blog(blog);
+      await blogObj.save();
+    }
+  });
+
   test('blogs are returned as JSON', async () => {
     api
       .get('/api/blogs')
@@ -48,6 +41,28 @@ describe('when fetching blogs', () => {
 
 //@desc: tests relating to POST requests
 describe('when creating a new blog', () => {
+  let token;
+
+  beforeEach(async () => {
+    await User.deleteMany({});
+
+    //the normal process would be to send a POST req
+    //and the route handlers handles saving to database
+    //after running needed operation and change making.
+    //Since we are not exposed to all functionality when testing,
+    //we save what would be the end result of a POST req op
+    //directly to the database, namely; a name, username and pwHash.
+    const passwordHash = await bcrypt.hash('test', 10);
+    const user = new User({ username: 'test', passwordHash });
+    await user.save();
+
+    const login = await api
+      .post('/api/login')
+      .send({ username: 'test', password: 'test' });
+
+    token = login.body.token;
+  });
+
   test('a valid blog is created', async () => {
     const newBlog = {
       title: 'title A',
@@ -59,16 +74,16 @@ describe('when creating a new blog', () => {
     await api
       .post('/api/blogs')
       .send(newBlog)
+      .set('Authorization', `bearer ${token}`)
       .expect(201)
       .expect('Content-Type', /application\/json/);
 
     const response = await api.get('/api/blogs');
-    expect(response.body).toHaveLength(bloglist.length + 1);
 
     const contents = response.body.map((b) => b.title);
     // toContain matcher checks if an array contains specified value
     expect(contents).toContain('title A');
-  }, 100000);
+  });
 
   test('the "likes" property defaults to zero if missing in request', async () => {
     const newBlog = {
@@ -80,6 +95,7 @@ describe('when creating a new blog', () => {
     await api
       .post('/api/blogs')
       .send(newBlog)
+      .set('Authorization', `bearer ${token}`)
       .expect(201)
       .expect('Content-Type', /application\/json/);
 
@@ -103,6 +119,15 @@ describe('when creating a new blog', () => {
 
 //@desc: tests relating to PUT requests
 describe('when updating a blog', () => {
+  beforeEach(async () => {
+    await Blog.deleteMany({});
+
+    for (const blog of bloglist) {
+      const blogObj = new Blog(blog);
+      await blogObj.save();
+    }
+  });
+
   test('blog is successfully updated', async () => {
     const blogs = await api.get('/api/blogs');
     const idToUpdate = blogs.body[0].id;
@@ -125,10 +150,42 @@ describe('when updating a blog', () => {
 
 //@desc: tests relating to DELETE requests
 describe('when deleting a blog', () => {
-  test('blog is successfully deleted', async () => {
-    const blogs = await api.get('/api/blogs');
+  let token;
 
-    await api.delete(`/api/blogs/${idToDelete}`).expect(204);
+  beforeEach(async () => {
+    await User.deleteMany({});
+
+    const passwordHash = await bcrypt.hash('test', 10);
+
+    const user = new User({ username: 'test', passwordHash });
+    await user.save();
+
+    const login = await api
+      .post('/api/login')
+      .send({ username: 'test', password: 'test' });
+
+    token = login.body.token;
+  });
+
+  test('blog is deleted only by its owner', async () => {
+    const newBlog = {
+      title: 'title A',
+      author: 'author A',
+      url: 'url A',
+      likes: 0,
+    };
+
+    const savedBlog = await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .set('Authorization', `bearer ${token}`);
+
+    const idToDelete = savedBlog.body.id;
+
+    await api
+      .delete(`/api/blogs/${idToDelete}`)
+      .set('Authorization', `bearer ${token}`)
+      .expect(204);
 
     const response = await api.get('/api/blogs');
     const content = response.body.find((b) => b.id === idToDelete);

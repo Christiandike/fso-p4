@@ -5,36 +5,33 @@ const app = require('../app');
 const api = supertest(app);
 const User = require('../models/user');
 const userlist = require('../models/userlist');
+const helper = require('./tests_helper')
 
 beforeEach(async () => {
   await User.deleteMany({});
 
-  for (const user of userlist) {
-    const userObj = new User(user);
-    await userObj.save();
-  }
+  await new User(userlist[0]).save()
 });
 
 //@desc: tests relating to POST requests
 describe('when creating a new user', () => {
   test('valid user is created', async () => {
+    const usersAtStart = await helper.usersInDb()
+
     const newUser = {
       name: 'user D',
       username: 'userD',
       password: 'userD',
     };
 
-    await api
+    const response = await api
       .post('/api/users')
       .send(newUser)
       .expect(201)
       .expect('Content-Type', /application\/json/);
 
-    const response = await api.get('/api/users');
-    expect(response.body).toHaveLength(userlist.length + 1);
-
-    const contents = response.body.map((u) => u.name);
-    expect(contents).toContain('user D');
+    const usersAtEnd = await helper.usersInDb()
+    expect(usersAtEnd).toHaveLength(usersAtStart.length + 1)
   });
 
   test('invalid user is not created', async () => {

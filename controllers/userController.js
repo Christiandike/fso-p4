@@ -33,18 +33,16 @@ userRouter.post('/', async (req, res, next) => {
     }
 
     if (username.length < 3 || password.length < 3) {
-      return res
-        .status(400)
-        .json({
-          error: 'username and password must be up to three characters',
-        });
+      return res.status(400).json({
+        error: 'username and password must be up to three characters',
+      });
     }
 
     if (userExists) {
       return res.status(400).json({ error: 'username must be unique' });
     }
 
-    //saltround isa cost factor that controls
+    //saltround is a cost factor that controls
     //how much time is needed to calculate a bcrypt hash
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
@@ -57,6 +55,9 @@ userRouter.post('/', async (req, res, next) => {
 
     const savedUser = await newUser.save();
     res.status(201).json(savedUser);
+
+    const all = await User.find({});
+    console.log(all.map((u) => u.toJSON()));
   } catch (err) {
     next(err);
   }
